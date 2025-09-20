@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linux FOSS Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Ubuntu Mono', monospace;
+            overflow: hidden; /* Prevent scrollbars from animation overflows */
+            background-color: #1a202c; /* Equivalent to dark:bg-gray-900 */
+        }
+        .correct {
+            background-color: #38A169 !important; /* Green-600 */
+            color: white !important;
+            border-color: #2F855A !important; /* Green-700 */
+            transform: scale(1.05);
+            animation: pulse 0.5s ease;
+        }
+        .incorrect {
+            background-color: #E53E3E !important; /* Red-600 */
+            color: white !important;
+            border-color: #C53030 !important; /* Red-700 */
+            animation: shake 0.5s ease;
+        }
+
+        /* Add a blinking cursor effect to the question */
+        #question.typing::after {
+            content: '_';
+            display: inline-block;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            from, to { color: transparent; }
+            50% { color: #48BB78; } /* green-400 */
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-6px); }
+            80% { transform: translateX(6px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1.05); } 
+            50% { transform: scale(1.1); }
+        }
+        
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .animate-fadeInUp {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+
+        .animate-popIn {
+             animation: popIn 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-green-400 flex items-center justify-center min-h-screen p-4">
+
+    <div id="quiz-container" class="w-full max-w-2xl bg-gray-800 rounded-lg shadow-2xl p-6 md:p-8 transform transition-all duration-500 border-2 border-green-500/30">
+        <!-- Progress Bar -->
+        <div id="progress-container" class="mb-4">
+             <div class="flex justify-between items-center mb-2 text-sm font-medium text-gray-400">
+                <span>[root@localhost ~]# loading_module</span>
+                <span id="progress-text">0%</span>
+            </div>
+            <div class="w-full bg-gray-700 rounded-none h-2.5">
+                <div id="progress-bar" class="bg-green-500 h-2.5" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Quiz Header -->
+        <div id="quiz-header" class="mb-6 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-green-400">Linux FOSS Trivia</h1>
+            <p class="text-gray-400 mt-2">./run_quiz.sh</p>
+        </div>
+
+        <!-- Question and Options -->
+        <div id="question-area">
+            <div class="flex justify-between items-center mb-4">
+                 <h2 id="question-number" class="text-lg font-semibold text-gray-300">Question 1/10</h2>
+                 <p id="score" class="text-lg font-semibold text-green-400">Score: 0</p>
+            </div>
+            <p id="question" class="text-xl md:text-2xl font-medium mb-6 min-h-[80px] text-white"></p>
+            <div id="options" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Options will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Quiz Controls -->
+        <div class="mt-8 flex justify-end">
+            <button id="next-btn" class="bg-green-600 text-white font-bold py-2 px-6 rounded-md hover:bg-green-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300/50 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2" disabled>
+                next
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16">
+                  <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="hidden text-center">
+            <h2 class="text-3xl font-bold mb-4 text-white">Quiz Complete!</h2>
+            <p id="final-score" class="text-5xl font-bold mb-2 text-green-400"></p>
+            <p id="feedback-message" class="text-lg text-gray-400 mb-6"></p>
+            <button id="restart-btn" class="bg-green-600 text-white font-bold py-3 px-8 rounded-md hover:bg-green-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300/50 flex items-center gap-2 mx-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-repeat" viewBox="0 0 16 16">
+                  <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
+                  <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.5A5.002 5.002 0 0 0 8 3zM3.5 12A5.002 5.002 0 0 0 8 13c1.552 0 2.94-.707 3.857-1.818a.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.5A5.002 5.002 0 0 0 8 13z"/>
+                </svg>
+                reboot_quiz
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const quizData = [
+            // Existing Questions
+            { question: "Who is the primary creator of the Linux kernel?", options: ["Richard Stallman", "Bill Gates", "Linus Torvalds", "Steve Jobs"], correctAnswer: "Linus Torvalds" },
+            { question: "What does the acronym 'GNU' stand for?", options: ["General Unix", "GNU's Not Unix", "Global Network Utility", "Grand Unified Namespace"], correctAnswer: "GNU's Not Unix" },
+            { question: "Which command is used to list the contents of a directory?", options: ["dir", "list", "ls", "show"], correctAnswer: "ls" },
+            { question: "What is the name of the official mascot of the Linux kernel?", options: ["Gnu", "Tux", "Konqi", "Wilber"], correctAnswer: "Tux" },
+            { question: "Which command would you use to change file permissions?", options: ["chown", "chmod", "chgrp", "perms"], correctAnswer: "chmod" },
+            { question: "In the Linux filesystem hierarchy, what is the root directory?", options: ["/root", "/home", "C:/", "/"], correctAnswer: "/" },
+            { question: "What does FOSS stand for?", options: ["Free Original Software Standard", "Fast Object-oriented Secure Software", "Free and Open Source Software", "Firmware Over System Socket"], correctAnswer: "Free and Open Source Software" },
+            { question: "Which of these is a popular text editor famous for its steep learning curve and modal interface?", options: ["nano", "gedit", "vim", "emacs"], correctAnswer: "vim" },
+            { question: "What is the default command-line shell for most Linux distributions?", options: ["zsh", "fish", "ksh", "bash"], correctAnswer: "bash" },
+            { question: "Which company is the primary developer of Android, an OS based on the Linux kernel?", options: ["Microsoft", "Apple", "Google", "Samsung"], correctAnswer: "Google" },
+            
+            // New Questions
+            { question: "Ubuntu is a derivative of which Linux distribution?", options: ["Fedora", "Arch Linux", "Debian", "Gentoo"], correctAnswer: "Debian" },
+            { question: "What is the package manager used by Debian and its derivatives?", options: ["yum", "pacman", "dnf", "apt"], correctAnswer: "apt" },
+            { question: "Which command is used to display the current working directory?", options: ["cwd", "dir", "pwd", "path"], correctAnswer: "pwd" },
+            { question: "What does the `sudo` command stand for?", options: ["Super User Do", "Switch User and Do", "Sub-level Domain", "System User Directory"], correctAnswer: "Super User Do" },
+            { question: "What is the most common bootloader for Linux distributions?", options: ["LILO", "Syslinux", "BOOTMGR", "GRUB"], correctAnswer: "GRUB" },
+            { question: "Which file contains information about users on a Linux system?", options: ["/etc/shadow", "/etc/passwd", "/etc/users", "/home/users"], correctAnswer: "/etc/passwd" },
+            { question: "The `>` symbol in the shell is used for...", options: ["Piping output to another command", "Appending output to a file", "Redirecting output to a file", "Executing a command"], correctAnswer: "Redirecting output to a file" },
+            { question: "Which command is used to view the manual pages for other commands?", options: ["help", "info", "guide", "man"], correctAnswer: "man" },
+            { question: "GNOME, KDE, and XFCE are examples of what?", options: ["Kernels", "Shells", "Desktop Environments", "File Systems"], correctAnswer: "Desktop Environments" },
+            { question: "What is the default file system for most modern Linux distributions?", options: ["NTFS", "FAT32", "ext4", "APFS"], correctAnswer: "ext4" },
+            { question: "Which command would you use to create a new directory named 'docs'?", options: ["newdir docs", "crdir docs", "mkdir docs", "makedir docs"], correctAnswer: "mkdir docs" },
+            { question: "How would you remove a file named 'temp.txt'?", options: ["del temp.txt", "rm temp.txt", "erase temp.txt", "rem temp.txt"], correctAnswer: "rm temp.txt" },
+            { question: "Which command is used to display running processes?", options: ["proc", "top", "run", "ps"], correctAnswer: "ps" },
+            { question: "The 'pipe' operator `|` is used to...", options: ["Send the output of one command as input to another", "Create a logical OR condition", "Append output to a file", "Search for a pattern"], correctAnswer: "Send the output of one command as input to another" },
+            { question: "In the context of file permissions, what does 'r' stand for?", options: ["Run", "Remove", "Read", "Reboot"], correctAnswer: "Read" },
+            { question: "The central part of the Linux operating system is called the...", options: ["Shell", "Kernel", "GUI", "Desktop"], correctAnswer: "Kernel" },
+            { question: "Which directory typically contains system configuration files?", options: ["/bin", "/etc", "/home", "/usr"], correctAnswer: "/etc" },
+            { question: "What is a 'rolling release' distribution model, as seen in Arch Linux?", options: ["Releases are made every 6 months", "Continuously updated, no major version releases", "Releases are based on a specific kernel version", "Only security updates are provided"], correctAnswer: "Continuously updated, no major version releases" },
+            { question: "Which command is used to search for text within files?", options: ["find", "search", "grep", "locate"], correctAnswer: "grep" },
+            { question: "What command is used to terminate a process?", options: ["stop", "end", "kill", "terminate"], correctAnswer: "kill" },
+            { question: "Fedora is the community-driven upstream for which corporate Linux distribution?", options: ["Ubuntu Server", "SUSE Linux Enterprise", "Red Hat Enterprise Linux", "Oracle Linux"], correctAnswer: "Red Hat Enterprise Linux" },
+            { question: "What is the purpose of the `/home` directory?", options: ["It contains essential system binaries", "It contains system-wide configuration files", "It is where user personal directories are stored", "It contains temporary files"], correctAnswer: "It is where user personal directories are stored" },
+            { question: "Which command is used to change your current directory?", options: ["cd", "chdir", "moveto", "goto"], correctAnswer: "cd" },
+            { question: "What does the `touch` command do when used with a non-existent filename?", options: ["Opens the file for editing", "Displays an error message", "Creates an empty file", "Deletes the file if it exists"], correctAnswer: "Creates an empty file" },
+            { question: "The `chmod 755` command gives which permissions?", options: ["rwxr-xr-x", "rwx-rwx-rwx", "r--r--r--", "rw-rw-rw-"], correctAnswer: "rwxr-xr-x" },
+            { question: "Which command is used to copy files or directories?", options: ["copy", "cp", "xcopy", "clone"], correctAnswer: "cp" },
+            { question: "Which directory contains essential command binaries available to all users?", options: ["/sbin", "/usr/sbin", "/bin", "/etc"], correctAnswer: "/bin" },
+            { question: "What is a 'tarball' in Linux?", options: ["A system log file", "A type of network packet", "An archive file created with the 'tar' utility", "A kernel module"], correctAnswer: "An archive file created with the 'tar' utility" },
+            { question: "Which command is used to check network connectivity with another host?", options: ["netstat", "ifconfig", "connect", "ping"], correctAnswer: "ping" },
+            { question: "Which command renames or moves a file?", options: ["ren", "move", "mv", "name"], correctAnswer: "mv" }
+        ];
+
+        // DOM Elements
+        const questionEl = document.getElementById('question');
+        const optionsEl = document.getElementById('options');
+        const nextBtn = document.getElementById('next-btn');
+        const scoreEl = document.getElementById('score');
+        const questionNumberEl = document.getElementById('question-number');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressContainer = document.getElementById('progress-container');
+        const quizContainer = document.getElementById('quiz-container');
+        const questionArea = document.getElementById('question-area');
+        const resultScreen = document.getElementById('result-screen');
+        const finalScoreEl = document.getElementById('final-score');
+        const feedbackMessageEl = document.getElementById('feedback-message');
+        const restartBtn = document.getElementById('restart-btn');
+
+        // State
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let shuffledQuestions = [];
+        let typingInterval; // To hold the interval ID for the typewriter effect
+
+        // --- Functions ---
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            shuffledQuestions = quizData.sort(() => Math.random() - 0.5);
+            questionArea.style.display = 'block';
+            progressContainer.style.display = 'block';
+            resultScreen.style.display = 'none';
+            nextBtn.parentElement.style.display = 'flex';
+            const nextButtonContent = `next <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>`;
+            nextBtn.innerHTML = nextButtonContent;
+            nextBtn.disabled = true;
+            updateScore();
+            updateProgressBar();
+            showQuestion();
+        }
+
+        function typewriter(text, element, callback) {
+            clearInterval(typingInterval); // Clear any existing typing animation
+            element.textContent = '';
+            element.classList.add('typing');
+            let i = 0;
+            const speed = 30; // Time in ms per character
+
+            typingInterval = setInterval(() => {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                } else {
+                    clearInterval(typingInterval);
+                    // The blinking cursor will remain at the end of the line
+                    if (callback) {
+                        callback();
+                    }
+                }
+            }, speed);
+        }
+
+        function showQuestion() {
+            resetState();
+            const currentQuestion = shuffledQuestions[currentQuestionIndex];
+            
+            questionNumberEl.textContent = `Question ${currentQuestionIndex + 1}/${shuffledQuestions.length}`;
+
+            // Use the typewriter effect for the question text
+            typewriter(currentQuestion.question, questionEl, () => {
+                // This callback runs after the question is typed out
+                // Now, create and animate the options
+                currentQuestion.options.forEach((option, index) => {
+                    const button = document.createElement('button');
+                    button.textContent = option;
+                    button.classList.add('w-full', 'p-4', 'border-2', 'border-gray-600', 'rounded-md', 'text-left', 'text-white', 'hover:bg-gray-700', 'hover:border-green-500', 'transition-all', 'duration-200', 'opacity-0', 'transform', 'hover:scale-105');
+                    button.style.animationDelay = `${0.1 * (index + 1)}s`;
+                    button.classList.add('animate-fadeInUp');
+                    button.addEventListener('click', () => selectAnswer(button, option));
+                    optionsEl.appendChild(button);
+                });
+            });
+        }
+
+        function resetState() {
+            nextBtn.disabled = true;
+            
+            // Stop any ongoing typewriter effect and remove the typing class
+            clearInterval(typingInterval);
+            questionEl.classList.remove('typing');
+            
+            while (optionsEl.firstChild) {
+                optionsEl.removeChild(optionsEl.firstChild);
+            }
+        }
+
+        function selectAnswer(selectedButton, selectedOption) {
+            const correct = selectedOption === shuffledQuestions[currentQuestionIndex].correctAnswer;
+            if (correct) {
+                score++;
+                selectedButton.classList.add('correct');
+            } else {
+                selectedButton.classList.add('incorrect');
+            }
+            
+            Array.from(optionsEl.children).forEach(button => {
+                if (button.textContent === shuffledQuestions[currentQuestionIndex].correctAnswer && !correct) {
+                    button.classList.add('correct');
+                }
+                button.disabled = true;
+            });
+
+            if (currentQuestionIndex === shuffledQuestions.length - 1) {
+                nextBtn.textContent = 'show_results';
+            }
+            
+            nextBtn.disabled = false;
+            updateScore();
+            updateProgressBar(true);
+        }
+
+        function updateScore() {
+            scoreEl.textContent = `Score: ${score}`;
+        }
+        
+        function updateProgressBar(answered = false) {
+            const completedQuestions = answered ? currentQuestionIndex + 1 : currentQuestionIndex;
+            const progressPercentage = (completedQuestions / shuffledQuestions.length) * 100;
+            progressBar.style.width = `${progressPercentage}%`;
+            progressText.textContent = `${Math.round(progressPercentage)}%`;
+        }
+
+        function handleNextButton() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < shuffledQuestions.length) {
+                showQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            questionArea.style.display = 'none';
+            nextBtn.parentElement.style.display = 'none';
+            progressContainer.style.display = 'none';
+            
+            resultScreen.style.display = 'block';
+            resultScreen.classList.add('animate-popIn');
+
+            const targetScore = score;
+            finalScoreEl.textContent = `0 / ${shuffledQuestions.length}`;
+
+            if (targetScore > 0) {
+                let displayedScore = 0;
+                const intervalTime = Math.max(10, 1000 / targetScore); 
+                const counter = setInterval(() => {
+                    displayedScore++;
+                    if (displayedScore >= targetScore) {
+                        displayedScore = targetScore;
+                        clearInterval(counter);
+                    }
+                    finalScoreEl.textContent = `${displayedScore} / ${shuffledQuestions.length}`;
+                }, intervalTime);
+            }
+
+            const scorePercentage = (score / shuffledQuestions.length) * 100;
+            let feedback = '';
+            if (scorePercentage === 100) {
+                feedback = "sudo ./quiz_master --level=expert 🐧";
+            } else if (scorePercentage >= 70) {
+                feedback = "Great job! You have root access to knowledge. 👍";
+            } else if (scorePercentage >= 40) {
+                feedback = "Not bad! You have user-level permissions. 😊";
+            } else {
+                feedback = "Keep trying! man learning_is_fun 🧠";
+            }
+            feedbackMessageEl.textContent = feedback;
+        }
+
+        // --- Event Listeners ---
+        nextBtn.addEventListener('click', () => {
+             if (!nextBtn.disabled) {
+                handleNextButton();
+            }
+        });
+        
+        restartBtn.addEventListener('click', startQuiz);
+
+        // Initial Load
+        document.addEventListener('DOMContentLoaded', startQuiz);
+    </script>
+</body>
+</html>
+
+
+
